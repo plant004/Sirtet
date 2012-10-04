@@ -72,9 +72,65 @@ window.onload = function(){
 
 	// ブロッククラス
 	game.Block = enchant.Class.create( {
-		initialize : function( x, y, rotate ) {
-			this.pos = new game.Position( x, y );
+		initialize : function( type ) {
+			this.pos = new Array();
+			this.pos[0] = new game.Position();
+			this.pos[1] = new game.Position();
+			this.pos[2] = new game.Position();
 			this._rotate = rotate;
+			this.init( type );
+		},
+		init : function( type ){
+			switch( type ) {
+				case game.BLOCK_TYPE.NO_BLOCK :
+					this.rotate.set( 1 );
+					this.pos[0].setXY( 0, 0 );
+					this.pos[1].setXY( 0, 0 );
+					this.pos[2].setXY( 0, 0 );
+					break;
+				case game.BLOCK_TYPE.Z_BLOCK :
+					this.rotate.set( 2 );
+					this.pos[0].setXY( 0, -1 );
+					this.pos[1].setXY( -1, 0 );
+					this.pos[2].setXY( -1, 1 );
+					break;
+				case game.BLOCK_TYPE.L_BLOCK :
+					this.rotate.set( 4 );
+					this.pos[0].setXY( 0, -1 );
+					this.pos[1].setXY( 0, 1 );
+					this.pos[2].setXY( -1, 1 );
+					break;
+				case game.BLOCK_TYPE.O_BLOCK :
+					this.rotate.set( 1 );
+					this.pos[0].setXY( 0, 1 );
+					this.pos[1].setXY( 1, 0 );
+					this.pos[2].setXY( 1, 1 );
+					break;
+				case game.BLOCK_TYPE.S_BLOCK :
+					this.rotate.set( 2 );
+					this.pos[0].setXY( 0, -1 );
+					this.pos[1].setXY( 1, 0 );
+					this.pos[2].setXY( 1, 1 );
+					break;
+				case game.BLOCK_TYPE.I_BLOCK :
+					this.rotate.set( 2 );
+					this.pos[0].setXY( 0, -1 );
+					this.pos[1].setXY( 0, 1 );
+					this.pos[2].setXY( 0, 2 );
+					break;
+				case game.BLOCK_TYPE.J_BLOCK :
+					this.rotate.set( 4 );
+					this.pos[0].setXY( 0, -1 );
+					this.pos[1].setXY( 0, 1 );
+					this.pos[2].setXY( 1, 1 );
+					break;
+				case game.BLOCK_TYPE.T_BLOCK :
+					this.rotate.set( 4 );
+					this.pos[0].setXY( 0, -1 );
+					this.pos[1].setXY( 1, 0 );
+					this.pos[2].setXY( -1, 0 );
+					break;
+			}
 		},
 		rotate : {
 			get : function() {
@@ -117,9 +173,14 @@ window.onload = function(){
 			Sprite.call(this, game.FIELD_W * game.PIXEL_PER_BLOCK, game.FIELD_H * game.PIXEL_PER_BLOCK);
 			this.backgroundColor = "black";
 			this._field = new Array();
-			// 周囲の壁の分( 2 )と壁プラス上の見えないフィールド分（ 2 + 3 ）だけ広く配列を初期化
 			for( var x = 0; x < game.FIELD_W + 2; x++ ) {
 				this._field[x] = new Array();
+			}
+			this.init();
+		},
+		init : function() {
+			// 周囲の壁の分( 2 )と壁プラス上の見えないフィールド分（ 2 + 3 ）だけ広く配列を初期化
+			for( var x = 0; x < game.FIELD_W + 2; x++ ) {
 				for( var y = 0; y < game.FIELD_H + 5; y++ ) {
 					// 両側面と底面を壁に
 					if( x == 0 || x == game.FIELD_W + 1 || y == 0 ) {
@@ -135,11 +196,48 @@ window.onload = function(){
 	} );
 
 
+	/**
+	 * オブジェクト指向的にはBlockやFieldのメソッドにした方がいいものや
+	 * BlockのFactoryとか作った方がいいものもありそうなので後で考える
+	 */
+	// ブロックを生成する
+	game.generateBlock = function() {
+		// TODO: 実装
+	};
+
+	// ブロックをフィールドに設置する
+	game.putBlock = function( status, action ) {
+		// TODO: 実装
+		var ret = false;
+		return ret;
+	};
+
+	// ブロックを落下させる
+	game.fallDownBlock = function() {
+		// TODO: 実装
+	};
+
+	// ブロックを削除する
+	game.deleteBlock = function( status ) {
+		// TODO: 実装
+	};
+
+	// ラインを削除する
+	game.deleteLine = function() {
+		// TODO: 実装
+	};
+	game.onGameOver = function() {
+		// TODO: 実装
+	};
+	
+
+
 //    game.preload("chara1.png");
     
     game.onload = function(){
     	// TODO: ゲームの初期化
 		field = new game.Field();
+		
 		game.rootScene.addChild( field );
 //        bear = new Sprite(32, 32);
 //        bear.image = game.assets["chara1.png"];
@@ -147,6 +245,7 @@ window.onload = function(){
 //        bear.y = 0;
 //        bear.frame = 5;
 //        game.rootScene.addChild(bear);
+
 
 // - "touchstart" : タッチ/クリックされたとき
 // - "touchmove" : タッチ座標が動いた/ドラッグされたとき

@@ -7,7 +7,7 @@ window.onload = function(){
 	// ゲーム画面の初期化
     var game = new Game(640, 480); // 幅640x高さ480
 	
-	game.fps = 15; // 15FPS
+	game.fps = 30; // 30FPS
 
 	// ゲームの定数の定義
 	game.BLOCK_TYPE_NUM = 8; // ブロックの種類の数
@@ -34,11 +34,15 @@ window.onload = function(){
 		T_BLOCK : 7,
 		WALL : 8
 	};
-	
+
+	// 入力処理を行うフレーム間隔
+	game.INPUT_FRAME_SPAN = 2;
+	game.FALL_FRAME_SPAN = 5;
 
 	// 位置を表すクラス
-	game.Position = enchant.Class.create( {
+	game.Position = enchant.Class.create( Sprite, {
 		initialize : function( x, y ) {
+			Sprite.call(this, game.PIXEL_PER_BLOCK, game.PIXEL_PER_BLOCK);
 			if ( arguments.length === 0 ) {
 				this.setXY( 0, 0 );
 			}
@@ -72,8 +76,9 @@ window.onload = function(){
 	} );
 
 	// ブロッククラス
-	game.Block = enchant.Class.create( {
+	game.Block = enchant.Class.create( Sprite, {
 		initialize : function( type ) {
+			Sprite.call(this, game.PIXEL_PER_BLOCK, game.PIXEL_PER_BLOCK);
 			this.pos = new Array();
 			this.pos[0] = new game.Position();
 			this.pos[1] = new game.Position();
@@ -271,19 +276,22 @@ window.onload = function(){
 	} );
 
 	// ゲームのメインクラス
-	game.Sirtet = enchant.Class.create( {
+	game.Sirtet = enchant.Class.create( Entity, {
 		// ゲームの初期化をする
 		initialize : function() {
+			Entity.call( this );
 			this.field = new game.Field();
 			this.putFlg = false;
 			this.gameOverFlg = false;
 			this.current = new game.Status();
+			this.counter = 0;
 		},
 		init : function() {
 			this.field.init();
 			this.putFlg = false;
 			this.gameOverFlg = false;
 			this.generateBlock();
+			this.counter = 0;
 		},
 		// ブロックを生成する
 		generateBlock : function() {
@@ -318,15 +326,33 @@ window.onload = function(){
 			if( this.gameOverFlg ) return;
 			// TODO: 実装
 		},
-		processGame : function() {
-			
-		},
 		gameOver : function() {
 			// TODO: 実装
 		},
+		processInput : function() {
+			// TODO: 実装
+			if( game.input.left ) {
+			}
+			else if( game.input.right ) {
+			}
+			else if( game.input.up ) {
+			}
+			else if( game.input.down ) {
+			}
+		},
 		onEnterFrame : function() {
 			while( !this.gameOverFlg ) {
-				this.processGame();
+				if( this.counter % game.INPUT_FRAME_SPAN == 0) {
+					// キー入力処理
+					var fallFlg = this.processInput();
+					// キーによる落下と自動落下の整合性を取るための処理
+					if( fallFlg == true ) this.counter = 0;
+				}
+				if( this.counter % game.FALL_FRAME_SPAN == 0 ) {
+					// 自動落下処理
+					this.fallDownBlock();
+				}
+				this.counter++;
 			}
 		}
 	} );
@@ -339,6 +365,7 @@ window.onload = function(){
 		sirtet = new game.Sirtet();
 		
 		game.rootScene.addChild( sirtet.field );
+		sirtet.addEventListener( "enterframe", sirtet.onEnterFrame );
 //        bear = new Sprite(32, 32);
 //        bear.image = game.assets["chara1.png"];
 //        bear.x = 0;

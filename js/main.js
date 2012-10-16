@@ -8,6 +8,14 @@ window.onload = function(){
     var game = new Game(640, 480); // 幅640x高さ480
 	
 	game.fps = 30; // 30FPS
+	
+	// TODO: キーバインド設定
+//	game.keybind( keycode, 'a' );
+//	game.keybind( keycode, 'b' );
+//	game.keybind( keycode, 'c' );
+//	game.keybind( keycode, 'd' );
+//	game.keybind( keycode, 'e' );
+//	game.keybind( keycode, 'f' );
 
 	// ゲームの定数の定義
 	game.BLOCK_TYPE_NUM = 8; // ブロックの種類の数
@@ -330,14 +338,50 @@ window.onload = function(){
 			// TODO: 実装
 		},
 		processInput : function() {
+			var ret = game.MOVE_STATE.NO_MOVE;
+			var tmp = this.current.clone();
 			// TODO: 実装
 			if( game.input.left ) {
+				tmp.pos.x--;
 			}
 			else if( game.input.right ) {
+				tmp.pos.x++;
 			}
 			else if( game.input.up ) {
+				tmp.rotate++;
 			}
 			else if( game.input.down ) {
+				tmp.y--;
+				ret = game.MOVE_STATE.MOVE_FALL;
+			}
+			else if( game.input.a ) {
+			}
+			else if( game.input.b ) {
+			}
+			else if( game.input.c ) {
+			}
+			else if( game.input.d ) {
+			}
+			else if( game.input.e ) {
+			}
+			else if( game.input.f ) {
+			}
+
+			// 位置や回転が変化していたら
+			if( tmp.pos.x != this.current.pos.x ||
+				tmp.pos.y != this.current.pos.y ||
+				tmp.rotate != this.current.rotate ) {
+				// 古い位置のブロックを消して、新しい場所へブロックを置けるか試す
+				this.deleteBlock( this.current );
+				if( this.putBlock( tmp, false) ) {
+					// ブロックが置けたらcurrentを更新する
+					this.current = tmp;
+					ret |= game.MOVE_STATE.MOVE_CHANGE;
+				}
+				else {
+					// ブロックが置けなかったら元の位置にブロックを置く
+					this.putBlock( this.current, false );
+				}
 			}
 		},
 		onEnterFrame : function() {

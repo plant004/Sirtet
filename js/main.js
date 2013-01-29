@@ -260,6 +260,10 @@ window.onload = function(){
 
 			return true;
 		},
+		/**
+		 * ブロックを消す
+		 * @param {game.Status} [status] 削除するブロックの状態
+		 */
 		deleteBlock : function( status ) {
 			this._field[x][y] = game.BLOCK_TYPE.NO_BLOCK;
 			for( var i = 0; i < 3; i++ ) {
@@ -279,6 +283,43 @@ window.onload = function(){
 					dy = -nx;
 				}
 				this._field[status.x + dx][status.y + dy] = game.BLOCK_TYPE.NO_BLOCK;
+			}
+		},
+		/**
+		 * 各行に空白があるかどうか調べ、空白のない行を消していく
+		 */
+		deleteLine : function() {
+			// 下から天井に向かって各行が消せるか調べていく
+			for( var y = 1; y < game.FIELD_H + 3; y++ ) {
+				var flag = true;
+				for( var x = 1; x <= game.FIELD_W; x++ ) {
+					if( this._field[x][y] == game.BLOCK_TYPE.NO_BLOCK ) {
+						flag = false;
+					}
+				}
+				
+				// ここまで来てflagがtrueのままであればこの行は消せる
+				if( flag ) {
+					for( var j = y; j < game.FIELD_H + 3; j++ ) {
+						for( var i = 1; i <= game.FIELD_W; i++ ) {
+							this._field[i][j] = this.field[i][j + 1];
+						}
+					}
+					// 複数行が消えた時のためにここでyを1戻しておく
+					y--;
+				}
+			}
+		},
+		/**
+		 * ゲームオーバー時にブロックを赤色に変える
+		 */
+		onGameOver : function() {
+			for( var x = 1; x <= game.FIELD_W; x++ ) {
+				for( var y = 1; y <= game.FIELD_H; y++ ) {
+					if( this._field[x][y] != game.BLOCK_TYPE.NO_BLOCK ) {
+						this._field[x][y] = game.BLOCK_TYPE.Z_BLOCK;
+					}
+				}
 			}
 		}
 	} );
@@ -310,7 +351,7 @@ window.onload = function(){
 			this.current.rotate = Math.floor( Math.random() * 4 );
 
 			// 生成したブロックを置けるか試して、置けない場合はゲームオーバー
-			if( !this.putBlock( this.current, false ) && this.putFlg ) {
+			if( !this.field.putBlock( this.current, false ) && this.putFlg ) {
 				this.gameOver();
 			}
 			this.putFlg = true;
@@ -322,25 +363,23 @@ window.onload = function(){
 		},
 		// ブロックを落下させる
 		fallDownBlock : function() {
-			// TODO: 実装
-		},
-		// ブロックを削除する
-		deleteBlock : function( status ) {
 			if( this.gameOverFlg ) return;
-			this.field.deleteBlock( status );
-		},
-		// ラインを削除する
-		deleteLine : function() {
-			if( this.gameOverFlg ) return;
-			// TODO: 実装
+			this.field.deleteBlock( this.current );
+			this.current.pos.y--;
+			if( !this.field.putBlock( this.current, false ) ) { // ブロックを落とせなかったら元に戻す
+				this.current.pos.y++;
+				this.field.putBlock( this.current, false );
+				this.field.deleteLine();
+				this.generateBlock();
 		},
 		gameOver : function() {
-			// TODO: 実装
+			this.gameOverFlg = true;
+
+			this.field.onGameOver();
 		},
 		processInput : function() {
 			var ret = game.MOVE_STATE.NO_MOVE;
 			var tmp = this.current.clone();
-			// TODO: 実装
 			if( game.input.left ) {
 				tmp.pos.x--;
 			}
@@ -372,17 +411,18 @@ window.onload = function(){
 				tmp.pos.y != this.current.pos.y ||
 				tmp.rotate != this.current.rotate ) {
 				// 古い位置のブロックを消して、新しい場所へブロックを置けるか試す
-				this.deleteBlock( this.current );
-				if( this.putBlock( tmp, false) ) {
+				this.field.deleteBlock( this.current );
+				if( this.field.putBlock( tmp, false ) ) {
 					// ブロックが置けたらcurrentを更新する
 					this.current = tmp;
 					ret |= game.MOVE_STATE.MOVE_CHANGE;
 				}
 				else {
 					// ブロックが置けなかったら元の位置にブロックを置く
-					this.putBlock( this.current, false );
+					this.field.putBlock( this.current, false );
 				}
 			}
+			return ret;
 		},
 		onEnterFrame : function() {
 			while( !this.gameOverFlg ) {

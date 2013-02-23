@@ -330,7 +330,7 @@ window.onload = function(){
 		 */
 		deleteLine : function() {
 //			game.d("deleteLine");
-			for( var y = 1; y < game.FIELD_H + 3; y++ ) {
+			for( var y = 1; y <= game.FIELD_H + 3; y++ ) {
 				var flag = true;
 				for( var x = 1; x <= game.FIELD_W; x++ ) {
 					if( this._field[x][y].type == game.BLOCK_TYPE.NO_BLOCK ) {

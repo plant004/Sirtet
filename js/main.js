@@ -342,7 +342,7 @@ window.onload = function(){
 				if( flag ) {
 				// TODO: ライン削除判定のデバッグ
 			game.d("deleteLine: y = ");
-					for( var j = 1; j < y; j++ ) {
+					for( var j = y; 0 < j; j-- ) {
 						for( var i = 1; i <= game.FIELD_W; i++ ) {
 							this._field[i][j].type = this._field[i][j - 1].type;
 						}

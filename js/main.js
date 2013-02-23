@@ -472,7 +472,7 @@ window.onload = function(){
 					// キー入力処理
 					var fallFlg = this.processInput();
 					// キーによる落下と自動落下の整合性を取るための処理
-					if( fallFlg == true ) this.counter = 0;
+					if( ( fallFlg & game.MOVE_STATE.MOVE_FALL ) != 0 ) this.counter = 0;
 				}
 				if( this.counter % game.FALL_FRAME_SPAN == 0 ) {
 					// 自動落下処理

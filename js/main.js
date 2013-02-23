@@ -7,7 +7,7 @@ window.onload = function(){
 	// ゲーム画面の初期化
     var game = new Game(640, 480); // 幅640x高さ480
 	
-	game.fps = 30; // 30FPS
+	game.fps = 12; // 30FPS
 	
 	// TODO: キーバインド設定
 //	game.keybind( keycode, 'a' );
@@ -43,14 +43,32 @@ window.onload = function(){
 		WALL : 8
 	};
 
+	// ブロックの色
+	game.BLOCK_COLOR = new Array(
+		"",
+		"green",
+		"blue",
+		"yellow",
+		"cyan",
+		"red",
+		"orange",
+		"magenta",
+		"gray"
+	);
+
+	// デバッグ用
+	game.d = function( str ) {
+		var div = document.getElementById( "debug" );
+		div.innerHTML += str + "<br />";
+	}
+
 	// 入力処理を行うフレーム間隔
 	game.INPUT_FRAME_SPAN = 2;
 	game.FALL_FRAME_SPAN = 5;
 
 	// 位置を表すクラス
-	game.Position = enchant.Class.create( Sprite, {
+	game.Position = enchant.Class.create({
 		initialize : function( x, y ) {
-			Sprite.call(this, game.PIXEL_PER_BLOCK, game.PIXEL_PER_BLOCK);
 			if ( arguments.length === 0 ) {
 				this.setXY( 0, 0 );
 			}
@@ -78,20 +96,19 @@ window.onload = function(){
 			}
 		},
 		setXY : function( x, y ){
-			this._x = x;
-			this._y = y;
+			this.x = x;
+			this.y = y;
 		}
 	} );
 
 	// ブロッククラス
-	game.Block = enchant.Class.create( Sprite, {
+	game.Block = enchant.Class.create( {
 		initialize : function( type ) {
-			Sprite.call(this, game.PIXEL_PER_BLOCK, game.PIXEL_PER_BLOCK);
 			this.pos = new Array();
 			this.pos[0] = new game.Position();
 			this.pos[1] = new game.Position();
 			this.pos[2] = new game.Position();
-			this._rotate = rotate;
+			this._rotate = 0;
 			this.init( type );
 		},
 		init : function( type ){
@@ -157,17 +174,13 @@ window.onload = function(){
 		},
 	} );
 
-	game.blocks = new Array();
-	for( var type; type < game.BLOCK_TYPE_NUM; type++ ) {
-		game.blocks[type] = new game.Block( type );
-	}
-
 	// ブロックの状態を示すクラス
-	game.Status = enchant.Class.create( {
+	game.Status = enchant.Class.create( game.Position, {
 		initialize : function( x, y, rotate, type ) {
-			this.pos = new game.Position( x, y );
+			game.Position.call(this, x, y);
 			this._rotate = rotate;
 			this._type = type;
+
 		},
 		type : {
 			get : function() {
@@ -184,17 +197,43 @@ window.onload = function(){
 			set : function( rotate ) {
 				this._rotate = rotate;
 			}
+		},
+		clone : function() {
+			return new game.Status( this.x, this.y, this.rotate, this.type );
 		}
 	} );
+
+	game.Rect = enchant.Class.create( Sprite, {
+		initialize : function( x, y, type ) {
+			Sprite.call(this, game.PIXEL_PER_BLOCK, game.PIXEL_PER_BLOCK );
+			this.type = type;
+			this.x = x * game.PIXEL_PER_BLOCK;
+			this.y = y * game.PIXEL_PER_BLOCK;
+		},
+		type : {
+			get : function() {
+				return this._type;
+			},
+			set : function( type ){
+				this._type = type;
+				this.backgroundColor = game.BLOCK_COLOR[type];
+			}
+		}
+	});
 
 	// ブロックを配置するフィールド
 	game.Field = enchant.Class.create( Sprite, {
 		initialize : function() {
-			Sprite.call(this, game.FIELD_W * game.PIXEL_PER_BLOCK, game.FIELD_H * game.PIXEL_PER_BLOCK);
+			Sprite.call( this, game.FIELD_W * game.PIXEL_PER_BLOCK, ( game.FIELD_H + 3 ) * game.PIXEL_PER_BLOCK  );
+			this.x = game.PIXEL_PER_BLOCK;
+			this.y = game.PIXEL_PER_BLOCK;
 			this.backgroundColor = "black";
 			this._field = new Array();
 			for( var x = 0; x < game.FIELD_W + 2; x++ ) {
 				this._field[x] = new Array();
+				for( var y = 0; y < game.FIELD_H + 5; y++ ) {
+					this._field[x][y] = new game.Rect( x, y, game.BLOCK_TYPE.WALL );
+				}
 			}
 			this.init();
 		},
@@ -203,17 +242,16 @@ window.onload = function(){
 			for( var x = 0; x < game.FIELD_W + 2; x++ ) {
 				for( var y = 0; y < game.FIELD_H + 5; y++ ) {
 					// 両側面と底面を壁に
-					if( x == 0 || x == game.FIELD_W + 1 || y == 0 ) {
-						this._field[x][y] = game.BLOCK_TYPE.WALL;
+					if( x == 0 || x == game.FIELD_W + 1 || y == game.FIELD_H + 4 ) {
+						this._field[x][y].type = game.BLOCK_TYPE.WALL;
 					}
 					// それ以外はブロックが無い状態
 					else {
-						this._field[x][y] = game.BLOCK_TYPE.NO_BLOCK;
+						this._field[x][y].type = game.BLOCK_TYPE.NO_BLOCK;
 					}
 				}
 			}
 		},
-		
 		/**
 		 * ブロックを置く
 		 * @param {game.Status} [status] 設置するブロックの状態
@@ -221,12 +259,13 @@ window.onload = function(){
 		 * @return {Boolean} ブロックが置けた場合はtrue、そうでなければfalse
 		 */
 		putBlock : function( status, action ) {
+//			game.d( "field.putBlock:x = " + status.x + ", y = " + status.y + ", type = " + status.type + ", action = " + ( action ? "true" : "false" ) );
 			// 既にブロックが置かれている場合は終了
-			if( game.BLOCK_TYPE.NO_BLOCK < this._field[status.x][status.y] &&
-				this._field[status.x][status.y] <= game.BLOCK_TYPE.WALL ) return false;
+			if( game.BLOCK_TYPE.NO_BLOCK < this._field[status.x][status.y].type &&
+				this._field[status.x][status.y].type <= game.BLOCK_TYPE.WALL ) return false;
 
 			if( action ) {
-				this._field[status.x][status.y] = status.type;
+				this._field[status.x][status.y].type = status.type;
 			}
 			for( var i = 0; i < 3; i++ ) {
 				var dx = game.blocks[status.type].pos[i].x;
@@ -246,10 +285,11 @@ window.onload = function(){
 					dy = -nx;
 				}
 				// 既にブロックが置かれている場合は終了
-				if( game.BLOCK_TYPE.NO_BLOCK < this._field[status.x + dx][status.y + dy] &&
-					this._field[status.x + dx][status.y + dy] <= game.BLOCK_TYPE.WALL ) return false;
+//				game.d( status.x + dx );
+				if( game.BLOCK_TYPE.NO_BLOCK < this._field[status.x + dx][status.y + dy].type &&
+					this._field[status.x + dx][status.y + dy].type <= game.BLOCK_TYPE.WALL ) return false;
 				if( action ) {
-					this._field[status.x + dx][status.y + dy] = game.BLOCK_TYPE.NO_BLOCK;
+					this._field[status.x + dx][status.y + dy].type = status.type;
 				}
 			}
 
@@ -265,7 +305,7 @@ window.onload = function(){
 		 * @param {game.Status} [status] 削除するブロックの状態
 		 */
 		deleteBlock : function( status ) {
-			this._field[x][y] = game.BLOCK_TYPE.NO_BLOCK;
+			this._field[status.x][status.y].type = game.BLOCK_TYPE.NO_BLOCK;
 			for( var i = 0; i < 3; i++ ) {
 				var dx = game.blocks[status.type].pos[i].x;
 				var dy = game.blocks[status.type].pos[i].y;
@@ -282,27 +322,29 @@ window.onload = function(){
 					dx = ny;
 					dy = -nx;
 				}
-				this._field[status.x + dx][status.y + dy] = game.BLOCK_TYPE.NO_BLOCK;
+				this._field[status.x + dx][status.y + dy].type = game.BLOCK_TYPE.NO_BLOCK;
 			}
 		},
 		/**
 		 * 各行に空白があるかどうか調べ、空白のない行を消していく
 		 */
 		deleteLine : function() {
-			// 下から天井に向かって各行が消せるか調べていく
+//			game.d("deleteLine");
 			for( var y = 1; y < game.FIELD_H + 3; y++ ) {
 				var flag = true;
 				for( var x = 1; x <= game.FIELD_W; x++ ) {
-					if( this._field[x][y] == game.BLOCK_TYPE.NO_BLOCK ) {
+					if( this._field[x][y].type == game.BLOCK_TYPE.NO_BLOCK ) {
 						flag = false;
 					}
 				}
 				
 				// ここまで来てflagがtrueのままであればこの行は消せる
 				if( flag ) {
-					for( var j = y; j < game.FIELD_H + 3; j++ ) {
+				// TODO: ライン削除判定のデバッグ
+			game.d("deleteLine: y = ");
+					for( var j = 1; j < y; j++ ) {
 						for( var i = 1; i <= game.FIELD_W; i++ ) {
-							this._field[i][j] = this.field[i][j + 1];
+							this._field[i][j].type = this._field[i][j - 1].type;
 						}
 					}
 					// 複数行が消えた時のためにここでyを1戻しておく
@@ -315,9 +357,9 @@ window.onload = function(){
 		 */
 		onGameOver : function() {
 			for( var x = 1; x <= game.FIELD_W; x++ ) {
-				for( var y = 1; y <= game.FIELD_H; y++ ) {
-					if( this._field[x][y] != game.BLOCK_TYPE.NO_BLOCK ) {
-						this._field[x][y] = game.BLOCK_TYPE.Z_BLOCK;
+				for( var y = 1; y <= game.FIELD_H + 3; y++ ) {
+					if( this._field[x][y].type != game.BLOCK_TYPE.NO_BLOCK ) {
+						this._field[x][y].type = game.BLOCK_TYPE.I_BLOCK;
 					}
 				}
 			}
@@ -328,6 +370,7 @@ window.onload = function(){
 	game.Sirtet = enchant.Class.create( Entity, {
 		// ゲームの初期化をする
 		initialize : function() {
+			game.d("new sirtet");
 			Entity.call( this );
 			this.field = new game.Field();
 			this.putFlg = false;
@@ -336,6 +379,7 @@ window.onload = function(){
 			this.counter = 0;
 		},
 		init : function() {
+			game.d("init sirtet");
 			this.field.init();
 			this.putFlg = false;
 			this.gameOverFlg = false;
@@ -344,35 +388,32 @@ window.onload = function(){
 		},
 		// ブロックを生成する
 		generateBlock : function() {
+//			game.d("generateBlock");
 			if( this.gameOverFlg ) return;
-			this.current.pos.x = Math.floor( game.FIELD_W / 2 );
-			this.current.pos.y = game.FIELD_H + 1;
+			this.current.x = Math.floor( game.FIELD_W / 2 );
+			this.current.y = 1;
 			this.current.type = Math.floor( Math.random() * ( game.BLOCK_TYPE_NUM - 1 ) ) + 1;
 			this.current.rotate = Math.floor( Math.random() * 4 );
 
 			// 生成したブロックを置けるか試して、置けない場合はゲームオーバー
-			if( !this.field.putBlock( this.current, false ) && this.putFlg ) {
+			if( !this.field.putBlock( this.current, false ) ) {
 				this.gameOver();
 			}
-			this.putFlg = true;
-		},
-		// ブロックをフィールドに設置する
-		putBlock : function( status, action ) {
-			if( this.gameOverFlg ) return false;
-			return this.field.putBlock( status, action );
 		},
 		// ブロックを落下させる
 		fallDownBlock : function() {
 			if( this.gameOverFlg ) return;
 			this.field.deleteBlock( this.current );
-			this.current.pos.y--;
+			this.current.y++;
 			if( !this.field.putBlock( this.current, false ) ) { // ブロックを落とせなかったら元に戻す
-				this.current.pos.y++;
+				this.current.y--;
 				this.field.putBlock( this.current, false );
 				this.field.deleteLine();
 				this.generateBlock();
+			}
 		},
 		gameOver : function() {
+			game.d("game over");
 			this.gameOverFlg = true;
 
 			this.field.onGameOver();
@@ -381,16 +422,16 @@ window.onload = function(){
 			var ret = game.MOVE_STATE.NO_MOVE;
 			var tmp = this.current.clone();
 			if( game.input.left ) {
-				tmp.pos.x--;
+				tmp.x--;
 			}
 			else if( game.input.right ) {
-				tmp.pos.x++;
+				tmp.x++;
 			}
 			else if( game.input.up ) {
 				tmp.rotate++;
 			}
 			else if( game.input.down ) {
-				tmp.y--;
+				tmp.y++;
 				ret = game.MOVE_STATE.MOVE_FALL;
 			}
 			else if( game.input.a ) {
@@ -407,8 +448,8 @@ window.onload = function(){
 			}
 
 			// 位置や回転が変化していたら
-			if( tmp.pos.x != this.current.pos.x ||
-				tmp.pos.y != this.current.pos.y ||
+			if( tmp.x != this.current.x ||
+				tmp.y != this.current.y ||
 				tmp.rotate != this.current.rotate ) {
 				// 古い位置のブロックを消して、新しい場所へブロックを置けるか試す
 				this.field.deleteBlock( this.current );
@@ -425,7 +466,8 @@ window.onload = function(){
 			return ret;
 		},
 		onEnterFrame : function() {
-			while( !this.gameOverFlg ) {
+//			if( this.counter > 20 ) this.gameOverFlg = true;
+			if( !this.gameOverFlg ) {
 				if( this.counter % game.INPUT_FRAME_SPAN == 0) {
 					// キー入力処理
 					var fallFlg = this.processInput();
@@ -447,8 +489,19 @@ window.onload = function(){
     
     game.onload = function(){
 		sirtet = new game.Sirtet();
-		
+		game.blocks = new Array();
+		for( var type = game.BLOCK_TYPE.NO_BLOCK; type < game.BLOCK_TYPE_NUM; type++ ) {
+			game.blocks[type] = new game.Block( type );
+		}
+		sirtet.init();
+
+		game.rootScene.addChild( sirtet );
 		game.rootScene.addChild( sirtet.field );
+		for( var x = 0; x < game.FIELD_W + 2; x++ ) {
+			for( var y = 1; y < game.FIELD_H + 5; y++ ) {
+				game.rootScene.addChild( sirtet.field._field[x][y] );
+			}
+		}
 		sirtet.addEventListener( "enterframe", sirtet.onEnterFrame );
 //        bear = new Sprite(32, 32);
 //        bear.image = game.assets["chara1.png"];

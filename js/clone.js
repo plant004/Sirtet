@@ -16,7 +16,12 @@
 	var clone = new (this.constructor);
 	for (var p in this) {
 	    if (!this.hasOwnProperty(p)) continue;
-	    clone[p] = typeof this[p] == 'object' ? this[p].clone() : this[p];
+		if(this[p] != null) {
+			clone[p] = typeof this[p] == 'object' ? this[p].clone() : this[p];
+		}
+		else {
+			clone[p] = null;
+		}
 	}
 	return clone;
     }
